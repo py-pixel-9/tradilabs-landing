@@ -260,7 +260,7 @@ footer .brand{color:var(--cream);margin-bottom:8px}
 <script>
 const CONFIG = {
   ENDPOINT: "https://script.google.com/macros/s/AKfycbxYOroTTIs2cT0pfTter4nTQSFbgQlvOVszyx-utmnqJbKKn2hn5WdDmaTafQJC4lUESg/exec",
-  META_PIXEL_ID: ""
+  META_PIXEL_ID: "1356626896412222"
 };
 document.getElementById("year").textContent = new Date().getFullYear();
 
@@ -285,6 +285,7 @@ phone.addEventListener("input",()=>{ let d=phone.value.replace(/\D/g,"").slice(0
 
 document.getElementById("leadForm").addEventListener("submit", async (e)=>{
   e.preventDefault();
+  if(document.getElementById("submitBtn").disabled) return;
   const f=e.target; if(f.website.value) return;
   const name=f.name.value.trim();
   if(!name){ f.name.focus(); return; }
@@ -296,8 +297,14 @@ document.getElementById("leadForm").addEventListener("submit", async (e)=>{
     utm_source:f.utm_source.value||"instagram", utm_medium:f.utm_medium.value, utm_content:f.utm_content.value,
     referrer:f.referrer.value, landing:f.landing.value, page:location.href, ua:navigator.userAgent, client_time:new Date().toString(), site:"tradilabs-insta" };
   try{
-    await fetch(CONFIG.ENDPOINT,{method:"POST",mode:"no-cors",headers:{"Content-Type":"text/plain;charset=utf-8"},body:JSON.stringify(payload)});
-    if(window.fbq) fbq('track','Lead');
+    if(!CONFIG.ENDPOINT) throw new Error("Missing submission endpoint");
+    const response=await fetch(CONFIG.ENDPOINT,{method:"POST",mode:"cors",credentials:"omit",headers:{"Content-Type":"text/plain;charset=utf-8"},body:JSON.stringify(payload)});
+    if(!response.ok) throw new Error("Submission HTTP error");
+    const result=await response.json();
+    if(result.ok!==true) throw new Error("Submission was not saved");
+    // The server returns ok:true only after the sheet row has been saved.
+    try { if(window.fbq) fbq('track','Lead'); }
+    catch(trackingError) { console.warn("Meta Lead tracking failed",trackingError); }
     f.style.display="none"; document.getElementById("done").classList.add("show"); document.getElementById("sticky").classList.remove("on");
   }catch(err){ alert("전송에 실패했습니다. 잠시 후 다시 시도해 주세요."); btn.disabled=false; btn.textContent="무료 체험 신청하기"; }
 });
